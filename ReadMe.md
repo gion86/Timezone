@@ -1,3 +1,9 @@
+# Arduino Timezone Library v1.1 (ATtiny) #                                  
+                                               
+ - 30/10/2016: Removed ARDUINO #if include                  
+ - 21/10/2017: Replaced Time.h Arduino library with time.h from 
+               avr-libc (to save space on the Tiny)             
+               
 # Arduino Timezone Library v1.0 #
 https://github.com/JChristensen/Timezone  
 ReadMe file  

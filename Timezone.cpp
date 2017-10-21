@@ -56,6 +56,7 @@ time_t Timezone::toLocal(time_t utc)
 {
     struct tm utc_tm, dstUTC;
 
+    // Conversion from time_t to struct tm to compare years
     gmtime_r(&utc, &utc_tm);
     gmtime_r(&_dstUTC, &dstUTC);
 
@@ -78,14 +79,9 @@ time_t Timezone::toLocal(time_t utc, TimeChangeRule **tcr)
 {
     struct tm utc_tm, dstUTC;
 
+    // Conversion from time_t to struct tm to compare years
     gmtime_r(&utc, &utc_tm);
     gmtime_r(&_dstUTC, &dstUTC);
-
-    Serial.print("utc_tm.tm_year = ");
-    Serial.println(utc_tm.tm_year);
-
-//    utc_tm.tm_year = utc_tm.tm_year + 1900 - 30;
-//    dstUTC.tm_year = dstUTC.tm_year + 1900 - 30;
 
     //recalculate the time change points if needed
     if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
@@ -129,6 +125,7 @@ time_t Timezone::toUTC(time_t local)
 {
     struct tm local_tm, dstLoc;
 
+    // Conversion from time_t to struct tm to compare years
     gmtime_r(&local, &local_tm);
     gmtime_r(&_dstLoc, &dstLoc);
 
@@ -145,15 +142,13 @@ time_t Timezone::toUTC(time_t local)
  * Determine whether the given UTC time_t is within the DST interval    *
  * or the Standard time interval.                                       *
  *----------------------------------------------------------------------*/
-boolean Timezone::utcIsDST(time_t utc)
+bool Timezone::utcIsDST(time_t utc)
 {
     struct tm utc_tm, dstUTC;
 
+    // Conversion from time_t to struct tm to compare years
     gmtime_r(&utc, &utc_tm);
     gmtime_r(&_dstUTC, &dstUTC);
-
-//    utc_tm.tm_year = utc_tm.tm_year + 1900 - 30;
-//    dstUTC.tm_year = dstUTC.tm_year + 1900 - 30;
 
     //recalculate the time change points if needed
     if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
@@ -168,15 +163,13 @@ boolean Timezone::utcIsDST(time_t utc)
  * Determine whether the given Local time_t is within the DST interval  *
  * or the Standard time interval.                                       *
  *----------------------------------------------------------------------*/
-boolean Timezone::locIsDST(time_t local)
+bool Timezone::locIsDST(time_t local)
 {
     struct tm local_tm, dstLoc;
 
+    // Conversion from time_t to struct tm to compare years
     gmtime_r(&local, &local_tm);
     gmtime_r(&_dstLoc, &dstLoc);
-
-//    local_tm.tm_year = local_tm.tm_year + 1900 - 30;
-//    dstLoc.tm_year   = dstLoc.tm_year + 1900 - 30;        // TODO 1900 - 30 + 100 years = + 1970 BUT years since 1900
 
     //recalculate the time change points if needed
     if (local_tm.tm_year != dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
@@ -205,7 +198,6 @@ void Timezone::calcTimeChanges(int yr)
  *----------------------------------------------------------------------*/
 time_t Timezone::toTime_t(TimeChangeRule r, int yr)
 {
-    Serial.println("toTime_t()");
     struct tm tm, tm_wday;
     time_t t;
     uint8_t m, w;            //temp copies of r.month and r.week
@@ -224,32 +216,14 @@ time_t Timezone::toTime_t(TimeChangeRule r, int yr)
     tm.tm_min= 0;
     tm.tm_sec = 0;
     tm.tm_mday = 1;
+    tm.tm_mon = m - 1;       //avr-libc time.h: months in [0, 11]
+    tm.tm_year = yr;         //avr-libc time.h: years since 1900 + y2k epoch difference (2000 - 1970)
 
-    Serial.print("yr = ");
-    Serial.println(yr);
+    t = mk_gmtime(&tm);      //first day of the month, or first day of next month for "Last" rules
 
-    //tm.tm_mon = m;
-    tm.tm_mon = m - 1;      //months in [0, 11]
+    gmtime_r(&t, &tm_wday);  //conversion from time_t to struct tm to have week day
 
-//    tm.tm_year = yr - 1970;  // TODO
-    tm.tm_year = yr;// - 1900 + 30;  // TODO - 1900 + 30 - 100 years = - 1970  BUT years since 1900
-
-    //t = makeTime(tm);        //first day of the month, or first day of next month for "Last" rules
-
-    t = mk_gmtime(&tm);        //first day of the month, or first day of next month for "Last" rules
-
-    gmtime_r(&t, &tm_wday);
-
-    Serial.print("mon = ");
-    Serial.println(tm_wday.tm_mon);
-    Serial.print("wday = ");
-    Serial.println(tm_wday.tm_wday);
-    Serial.print("year = ");
-    Serial.println(tm_wday.tm_year);
-    Serial.println("");
-
-    //t += (7 * (w - 1) + (r.dow - tm_wday.tm_wday + 7) % 7) * SECS_PER_DAY;
-    t += (7 * (w - 1) + (r.dow - tm_wday.tm_wday + 1 + 7) % 7) * SECS_PER_DAY;  // TODO weekday in [0, 6]
+    t += (7 * (w - 1) + (r.dow - tm_wday.tm_wday + 1 + 7) % 7) * SECS_PER_DAY;  //weekday in [0, 6]
     if (r.week == 0) t -= 7 * SECS_PER_DAY;    //back up a week if this is a "Last" rule
     return t;
 }

@@ -23,7 +23,7 @@
 #include <Arduino.h> 
 #include <time.h>              //avr-libc built in time library.
 
-// Useful Constants 
+//constants for time_t conversions
 #define SECS_PER_MIN    60
 #define SECS_PER_HOUR   3600
 #define SECS_PER_DAY    86400
