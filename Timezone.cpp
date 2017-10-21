@@ -9,6 +9,15 @@
  * San Francisco, California, 94105, USA.                               *
  *----------------------------------------------------------------------*/
 
+/*----------------------------------------------------------------------*
+ * Arduino Timezone Library v1.1                                        *
+ * Gionata Boccalini                                                    *
+ *  - 30/10/2016: Removed ARDUINO #if since it's not used in my         *
+ *                development environment (ATTiny)                      *
+ *  - 21/10/2017: Replaced Time.h Arduino library with time.h from      *
+ *                avr-libc (to save space on the Tiny)                  *
+ *----------------------------------------------------------------------*/
+
 #include "Timezone.h"
 
 #ifdef __AVR__
@@ -20,8 +29,12 @@
  *----------------------------------------------------------------------*/
 Timezone::Timezone(TimeChangeRule dstStart, TimeChangeRule stdStart)
 {
-    _dst = dstStart;
-    _std = stdStart;
+    _dst    = dstStart;
+    _std    = stdStart;
+    _dstUTC = 0;
+    _stdUTC = 0;
+    _dstLoc = 0;
+    _stdLoc = 0;
 }
 
 #ifdef __AVR__
@@ -41,8 +54,13 @@ Timezone::Timezone(int address)
  *----------------------------------------------------------------------*/
 time_t Timezone::toLocal(time_t utc)
 {
+    struct tm utc_tm, dstUTC;
+
+    gmtime_r(&utc, &utc_tm);
+    gmtime_r(&_dstUTC, &dstUTC);
+
     //recalculate the time change points if needed
-    if (year(utc) != year(_dstUTC)) calcTimeChanges(year(utc));
+    if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
 
     if (utcIsDST(utc))
         return utc + _dst.offset * SECS_PER_MIN;
@@ -58,8 +76,19 @@ time_t Timezone::toLocal(time_t utc)
  *----------------------------------------------------------------------*/
 time_t Timezone::toLocal(time_t utc, TimeChangeRule **tcr)
 {
+    struct tm utc_tm, dstUTC;
+
+    gmtime_r(&utc, &utc_tm);
+    gmtime_r(&_dstUTC, &dstUTC);
+
+    Serial.print("utc_tm.tm_year = ");
+    Serial.println(utc_tm.tm_year);
+
+//    utc_tm.tm_year = utc_tm.tm_year + 1900 - 30;
+//    dstUTC.tm_year = dstUTC.tm_year + 1900 - 30;
+
     //recalculate the time change points if needed
-    if (year(utc) != year(_dstUTC)) calcTimeChanges(year(utc));
+    if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
 
     if (utcIsDST(utc)) {
         *tcr = &_dst;
@@ -98,8 +127,13 @@ time_t Timezone::toLocal(time_t utc, TimeChangeRule **tcr)
  *----------------------------------------------------------------------*/
 time_t Timezone::toUTC(time_t local)
 {
+    struct tm local_tm, dstLoc;
+
+    gmtime_r(&local, &local_tm);
+    gmtime_r(&_dstLoc, &dstLoc);
+
     //recalculate the time change points if needed
-    if (year(local) != year(_dstLoc)) calcTimeChanges(year(local));
+    if (local_tm.tm_year != dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
 
     if (locIsDST(local))
         return local - _dst.offset * SECS_PER_MIN;
@@ -111,16 +145,22 @@ time_t Timezone::toUTC(time_t local)
  * Determine whether the given UTC time_t is within the DST interval    *
  * or the Standard time interval.                                       *
  *----------------------------------------------------------------------*/
-bool Timezone::utcIsDST(time_t utc)
+boolean Timezone::utcIsDST(time_t utc)
 {
-    //recalculate the time change points if needed
-    if (year(utc) != year(_dstUTC)) calcTimeChanges(year(utc));
+    struct tm utc_tm, dstUTC;
 
-    if (_stdUTC == _dstUTC)         //daylight time not observed in this tz
-        return false;
-    else if (_stdUTC > _dstUTC)     //northern hemisphere
+    gmtime_r(&utc, &utc_tm);
+    gmtime_r(&_dstUTC, &dstUTC);
+
+//    utc_tm.tm_year = utc_tm.tm_year + 1900 - 30;
+//    dstUTC.tm_year = dstUTC.tm_year + 1900 - 30;
+
+    //recalculate the time change points if needed
+    if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
+
+    if (_stdUTC > _dstUTC)    //northern hemisphere
         return (utc >= _dstUTC && utc < _stdUTC);
-    else                            //southern hemisphere
+    else                      //southern hemisphere
         return !(utc >= _stdUTC && utc < _dstUTC);
 }
 
@@ -128,16 +168,22 @@ bool Timezone::utcIsDST(time_t utc)
  * Determine whether the given Local time_t is within the DST interval  *
  * or the Standard time interval.                                       *
  *----------------------------------------------------------------------*/
-bool Timezone::locIsDST(time_t local)
+boolean Timezone::locIsDST(time_t local)
 {
-    //recalculate the time change points if needed
-    if (year(local) != year(_dstLoc)) calcTimeChanges(year(local));
+    struct tm local_tm, dstLoc;
 
-    if (_stdUTC == _dstUTC)         //daylight time not observed in this tz
-        return false;
-    else if (_stdLoc > _dstLoc)     //northern hemisphere
+    gmtime_r(&local, &local_tm);
+    gmtime_r(&_dstLoc, &dstLoc);
+
+//    local_tm.tm_year = local_tm.tm_year + 1900 - 30;
+//    dstLoc.tm_year   = dstLoc.tm_year + 1900 - 30;        // TODO 1900 - 30 + 100 years = + 1970 BUT years since 1900
+
+    //recalculate the time change points if needed
+    if (local_tm.tm_year != dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
+
+    if (_stdLoc > _dstLoc)    //northern hemisphere
         return (local >= _dstLoc && local < _stdLoc);
-    else                            //southern hemisphere
+    else                      //southern hemisphere
         return !(local >= _stdLoc && local < _dstLoc);
 }
 
@@ -159,7 +205,8 @@ void Timezone::calcTimeChanges(int yr)
  *----------------------------------------------------------------------*/
 time_t Timezone::toTime_t(TimeChangeRule r, int yr)
 {
-    tmElements_t tm;
+    Serial.println("toTime_t()");
+    struct tm tm, tm_wday;
     time_t t;
     uint8_t m, w;            //temp copies of r.month and r.week
 
@@ -173,14 +220,36 @@ time_t Timezone::toTime_t(TimeChangeRule r, int yr)
         w = 1;               //and treat as first week of next month, subtract 7 days later
     }
 
-    tm.Hour = r.hour;
-    tm.Minute = 0;
-    tm.Second = 0;
-    tm.Day = 1;
-    tm.Month = m;
-    tm.Year = yr - 1970;
-    t = makeTime(tm);        //first day of the month, or first day of next month for "Last" rules
-    t += (7 * (w - 1) + (r.dow - weekday(t) + 7) % 7) * SECS_PER_DAY;
+    tm.tm_hour = r.hour;
+    tm.tm_min= 0;
+    tm.tm_sec = 0;
+    tm.tm_mday = 1;
+
+    Serial.print("yr = ");
+    Serial.println(yr);
+
+    //tm.tm_mon = m;
+    tm.tm_mon = m - 1;      //months in [0, 11]
+
+//    tm.tm_year = yr - 1970;  // TODO
+    tm.tm_year = yr;// - 1900 + 30;  // TODO - 1900 + 30 - 100 years = - 1970  BUT years since 1900
+
+    //t = makeTime(tm);        //first day of the month, or first day of next month for "Last" rules
+
+    t = mk_gmtime(&tm);        //first day of the month, or first day of next month for "Last" rules
+
+    gmtime_r(&t, &tm_wday);
+
+    Serial.print("mon = ");
+    Serial.println(tm_wday.tm_mon);
+    Serial.print("wday = ");
+    Serial.println(tm_wday.tm_wday);
+    Serial.print("year = ");
+    Serial.println(tm_wday.tm_year);
+    Serial.println("");
+
+    //t += (7 * (w - 1) + (r.dow - tm_wday.tm_wday + 7) % 7) * SECS_PER_DAY;
+    t += (7 * (w - 1) + (r.dow - tm_wday.tm_wday + 1 + 7) % 7) * SECS_PER_DAY;  // TODO weekday in [0, 6]
     if (r.week == 0) t -= 7 * SECS_PER_DAY;    //back up a week if this is a "Last" rule
     return t;
 }

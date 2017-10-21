@@ -8,15 +8,25 @@
  * letter to Creative Commons, 171 Second Street, Suite 300,            *
  * San Francisco, California, 94105, USA.                               *
  *----------------------------------------------------------------------*/ 
- 
+
+/*----------------------------------------------------------------------*
+ * Arduino Timezone Library v1.1                                        *
+ * Gionata Boccalini                                                    *
+ *  - 30/10/2016: Removed ARDUINO #if since it's not used in my         *
+ *                development environment (ATTiny)                      *
+ *  - 21/10/2017: Replaced Time.h Arduino library with time.h from      *
+ *                avr-libc (to save space on the Tiny)                  *
+ *----------------------------------------------------------------------*/
+
 #ifndef Timezone_h
 #define Timezone_h
-#if ARDUINO >= 100
 #include <Arduino.h> 
-#else
-#include <WProgram.h> 
-#endif
-#include <Time.h>              //http://www.arduino.cc/playground/Code/Time
+#include <time.h>              //avr-libc built in time library.
+
+// Useful Constants 
+#define SECS_PER_MIN    60
+#define SECS_PER_HOUR   3600
+#define SECS_PER_DAY    86400
 
 //convenient constants for dstRules
 enum week_t {Last, First, Second, Third, Fourth}; 
