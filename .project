@@ -3,6 +3,7 @@
 	<name>TimeZone</name>
 	<comment></comment>
 	<projects>
+		<project>ATMegaCore</project>
 		<project>ATTinyCore</project>
 	</projects>
 	<buildSpec>
