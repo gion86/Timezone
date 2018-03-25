@@ -116,7 +116,7 @@ time_t Timezone::toLocal(time_t utc, TimeChangeRule **tcr)
  *                                                                      *
  * If passed a local time value during the DST -> Local transition      *
  * that occurs twice, it will be treated as the earlier time, i.e.      *
- * the time that occurs before the transistion.                         *
+ * the time that occurs before the transition.                          *
  *                                                                      *
  * Calling this function with local times during a transition interval  *
  * should be avoided!                                                   *
@@ -182,7 +182,7 @@ bool Timezone::locIsDST(time_t local)
 
 /*----------------------------------------------------------------------*
  * Calculate the DST and standard time change points for the given      *
- * given year as local and UTC time_t values.                           *
+ * year as local and UTC time_t values.                                 *
  *----------------------------------------------------------------------*/
 void Timezone::calcTimeChanges(int yr)
 {
@@ -205,8 +205,8 @@ time_t Timezone::toTime_t(TimeChangeRule r, int yr)
     m = r.month;
     w = r.week;
     if (w == 0) {            //Last week = 0
-        if (++m > 12) {      //for "Last", go to the next month
-            m = 1;
+        if (++m > 11) {      //for "Last", go to the next month: avr-libc time.h: months in [0, 11]
+            m = 0;
             yr++;
         }
         w = 1;               //and treat as first week of next month, subtract 7 days later
@@ -216,15 +216,15 @@ time_t Timezone::toTime_t(TimeChangeRule r, int yr)
     tm.tm_min= 0;
     tm.tm_sec = 0;
     tm.tm_mday = 1;
-    tm.tm_mon = m - 1;       //avr-libc time.h: months in [0, 11]
+    tm.tm_mon = m;
     tm.tm_year = yr;         //avr-libc time.h: years since 1900 + y2k epoch difference (2000 - 1970)
 
     t = mk_gmtime(&tm);      //first day of the month, or first day of next month for "Last" rules
 
     gmtime_r(&t, &tm_wday);  //conversion from time_t to struct tm to have week day
 
-    t += (7 * (w - 1) + (r.dow - tm_wday.tm_wday + 1 + 7) % 7) * SECS_PER_DAY;  //weekday in [0, 6]
-    if (r.week == 0) t -= 7 * SECS_PER_DAY;    //back up a week if this is a "Last" rule
+    t += (7 * (w - 1) + (r.dow - tm_wday.tm_wday + 7) % 7) * SECS_PER_DAY;  //weekday in [0, 6]
+    if (r.week == Last) t -= 7 * SECS_PER_DAY;    //back up a week if this is a "Last" rule
     return t;
 }
 
@@ -250,5 +250,4 @@ void Timezone::writeRules(int address)
     address += sizeof(_dst);
     eeprom_write_block((void *) &_std, (void *) address, sizeof(_std));
 }
-
 #endif

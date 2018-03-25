@@ -16,6 +16,8 @@
  *                development environment (ATTiny)                      *
  *  - 21/10/2017: Replaced Time.h Arduino library with time.h from      *
  *                avr-libc (to save space on the Tiny)                  *
+ *  - 25/03/2017: Fixed bug in DST change time evaluation: the          *
+ *                enumeration simply have to start from 0...            *
  *----------------------------------------------------------------------*/
 
 #ifndef Timezone_h
@@ -30,8 +32,8 @@
 
 //convenient constants for dstRules
 enum week_t {Last, First, Second, Third, Fourth}; 
-enum dow_t {Sun=1, Mon, Tue, Wed, Thu, Fri, Sat};
-enum month_t {Jan=1, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};
+enum dow_t {Sun, Mon, Tue, Wed, Thu, Fri, Sat};								//avr-libc time.h: months in [0, 11]
+enum month_t {Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};	//avr-libc time.h: months in [0, 11]
 
 //structure to describe rules for when daylight/summer time begins,
 //or when standard time begins.
