@@ -18,6 +18,7 @@
  *                avr-libc (to save space on the Tiny)                  *
  *  - 25/03/2017: Fixed bug in DST change time evaluation: the          *
  *                enumeration simply have to start from 0...            *
+ *  - 24/11/2018: Added toLocal function with struct tm input/output    *
  *----------------------------------------------------------------------*/
 
 #ifndef Timezone_h
@@ -54,6 +55,7 @@ class Timezone
         Timezone(int address);
         time_t toLocal(time_t utc);
         time_t toLocal(time_t utc, TimeChangeRule **tcr);
+        time_t toLocal(time_t utc, struct tm *tm_local, TimeChangeRule **tcr);
         time_t toUTC(time_t local);
         bool utcIsDST(time_t utc);
         bool locIsDST(time_t local);

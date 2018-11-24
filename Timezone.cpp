@@ -96,6 +96,15 @@ time_t Timezone::toLocal(time_t utc, TimeChangeRule **tcr)
     }
 }
 
+time_t Timezone::toLocal(time_t utc, struct tm *tm_local, TimeChangeRule **tcr)
+{
+    memset((void*) tm_local, 0, sizeof(*tm_local));
+    time_t local = toLocal(utc, tcr);
+    gmtime_r(&local, tm_local);
+
+    return local;
+}
+
 /*----------------------------------------------------------------------*
  * Convert the given local time to UTC time.                            *
  *                                                                      *
