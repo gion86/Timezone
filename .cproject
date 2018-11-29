@@ -60,7 +60,7 @@
 			</storageModule>
 		</cconfiguration>
 		<cconfiguration id="de.innot.avreclipse.configuration.lib.release.106305086.2057480405.1383400329">
-			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="de.innot.avreclipse.configuration.lib.release.106305086.2057480405.1383400329" moduleId="org.eclipse.cdt.core.settings" name="ATMega328P">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="de.innot.avreclipse.configuration.lib.release.106305086.2057480405.1383400329" moduleId="org.eclipse.cdt.core.settings" name="ATMega328P_1Mhz">
 				<externalSettings/>
 				<extensions>
 					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
@@ -70,7 +70,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="a" artifactName="timezone" buildArtefactType="de.innot.avreclipse.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=de.innot.avreclipse.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="Atmel Atmega328P with custom core" id="de.innot.avreclipse.configuration.lib.release.106305086.2057480405.1383400329" name="ATMega328P" parent="de.innot.avreclipse.configuration.lib.release">
+				<configuration artifactExtension="a" artifactName="timezone" buildArtefactType="de.innot.avreclipse.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=de.innot.avreclipse.buildArtefactType.staticLib,org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release" cleanCommand="rm -rf" description="Atmel Atmega328P with custom core @ 1Mhz" id="de.innot.avreclipse.configuration.lib.release.106305086.2057480405.1383400329" name="ATMega328P_1Mhz" parent="de.innot.avreclipse.configuration.lib.release">
 					<folderInfo id="de.innot.avreclipse.configuration.lib.release.106305086.2057480405.1383400329." name="/" resourcePath="">
 						<toolChain id="de.innot.avreclipse.toolchain.winavr.lib.release.904747683" name="AVR-GCC Toolchain" superClass="de.innot.avreclipse.toolchain.winavr.lib.release">
 							<option id="de.innot.avreclipse.toolchain.options.toolchain.objdump.lib.release.2085533429" name="Generate Extended Listing (Source + generated Assembler)" superClass="de.innot.avreclipse.toolchain.options.toolchain.objdump.lib.release"/>

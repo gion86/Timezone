@@ -56,6 +56,7 @@ class Timezone
         time_t toLocal(time_t utc);
         time_t toLocal(time_t utc, TimeChangeRule **tcr);
         time_t toLocal(time_t utc, struct tm *tm_local, TimeChangeRule **tcr);
+        time_t toLocal(struct tm *tm_utc, struct tm *tm_local, TimeChangeRule **tcr);
         time_t toUTC(time_t local);
         bool utcIsDST(time_t utc);
         bool locIsDST(time_t local);
