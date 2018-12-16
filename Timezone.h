@@ -75,8 +75,10 @@ class Timezone
         TimeChangeRule m_dst;   // rule for start of dst or summer time for any year
         TimeChangeRule m_std;   // rule for start of standard time for any year
         time_t m_dstUTC;        // dst start for given/current year, given in UTC
+        struct tm m_tm_dstUTC;
         time_t m_stdUTC;        // std time start for given/current year, given in UTC
         time_t m_dstLoc;        // dst start for given/current year, given in local time
+        struct tm m_tm_dstLoc;
         time_t m_stdLoc;        // std time start for given/current year, given in local time
 };
 #endif

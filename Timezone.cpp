@@ -64,14 +64,13 @@ Timezone::Timezone(int address)
  *----------------------------------------------------------------------*/
 time_t Timezone::toLocal(time_t utc)
 {
-    struct tm utc_tm, dstUTC;
+    struct tm utc_tm;
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&utc, &utc_tm);
-    gmtime_r(&m_dstUTC, &dstUTC);
 
     // Recalculate the time change points if needed
-    if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
+    if (utc_tm.tm_year != m_tm_dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
 
     if (utcIsDST(utc))
         return utc + m_dst.offset * SECS_PER_MIN;
@@ -87,14 +86,13 @@ time_t Timezone::toLocal(time_t utc)
  *----------------------------------------------------------------------*/
 time_t Timezone::toLocal(time_t utc, TimeChangeRule **tcr)
 {
-    struct tm utc_tm, dstUTC;
+    struct tm utc_tm;
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&utc, &utc_tm);
-    gmtime_r(&m_dstUTC, &dstUTC);
 
     // Recalculate the time change points if needed
-    if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
+    if (utc_tm.tm_year != m_tm_dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
 
     if (utcIsDST(utc)) {
         *tcr = &m_dst;
@@ -152,14 +150,13 @@ time_t Timezone::toLocal(struct tm *tm_utc, struct tm *tm_local, TimeChangeRule 
  *----------------------------------------------------------------------*/
 time_t Timezone::toUTC(time_t local)
 {
-    struct tm local_tm, dstLoc;
+    struct tm local_tm;
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&local, &local_tm);
-    gmtime_r(&m_dstLoc, &dstLoc); // TODO
 
     // Recalculate the time change points if needed
-    if (local_tm.tm_year != dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
+    if (local_tm.tm_year != m_tm_dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
 
     if (locIsDST(local))
         return local - m_dst.offset * SECS_PER_MIN;
@@ -173,14 +170,13 @@ time_t Timezone::toUTC(time_t local)
  *----------------------------------------------------------------------*/
 bool Timezone::utcIsDST(time_t utc)
 {
-    struct tm utc_tm, dstUTC;
+    struct tm utc_tm;
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&utc, &utc_tm);
-    gmtime_r(&m_dstUTC, &dstUTC);
 
     // Recalculate the time change points if needed
-    if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
+    if (utc_tm.tm_year != m_tm_dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
 
     if (m_stdUTC == m_dstUTC)       // daylight time not observed in this tz
         return false;
@@ -196,14 +192,13 @@ bool Timezone::utcIsDST(time_t utc)
  *----------------------------------------------------------------------*/
 bool Timezone::locIsDST(time_t local)
 {
-    struct tm local_tm, dstLoc;
+    struct tm local_tm;
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&local, &local_tm);
-    gmtime_r(&m_dstLoc, &dstLoc);
 
     // Recalculate the time change points if needed
-    if (local_tm.tm_year != dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
+    if (local_tm.tm_year != m_tm_dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
 
     if (m_stdUTC == m_dstUTC)       // daylight time not observed in this tz
         return false;
@@ -220,8 +215,10 @@ bool Timezone::locIsDST(time_t local)
 void Timezone::calcTimeChanges(int yr)
 {
     m_dstLoc = toTime_t(m_dst, yr);
+    gmtime_r(&m_dstLoc, &m_tm_dstLoc);
     m_stdLoc = toTime_t(m_std, yr);
     m_dstUTC = m_dstLoc - m_std.offset * SECS_PER_MIN;
+    gmtime_r(&m_dstUTC, &m_tm_dstUTC);
     m_stdUTC = m_stdLoc - m_dst.offset * SECS_PER_MIN;
 }
 
@@ -231,8 +228,10 @@ void Timezone::calcTimeChanges(int yr)
 void Timezone::initTimeChanges()
 {
     m_dstLoc = 0;
+    gmtime_r(&m_dstLoc, &m_tm_dstLoc);
     m_stdLoc = 0;
     m_dstUTC = 0;
+    gmtime_r(&m_dstUTC, &m_tm_dstUTC);
     m_stdUTC = 0;
 }
 
