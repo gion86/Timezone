@@ -150,13 +150,13 @@ time_t Timezone::toLocal(struct tm *tm_utc, struct tm *tm_local, TimeChangeRule 
  *----------------------------------------------------------------------*/
 time_t Timezone::toUTC(time_t local)
 {
-    struct tm local_tm;
+    struct tm tm_local;
 
     // Conversion from time_t to struct tm to compare years
-    gmtime_r(&local, &local_tm);
+    gmtime_r(&local, &tm_local);
 
     // Recalculate the time change points if needed
-    if (local_tm.tm_year != m_tm_dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
+    if (tm_local.tm_year != m_tm_dstLoc.tm_year) calcTimeChanges(tm_local.tm_year);
 
     if (locIsDST(local))
         return local - m_dst.offset * SECS_PER_MIN;
@@ -187,18 +187,52 @@ bool Timezone::utcIsDST(time_t utc)
 }
 
 /*----------------------------------------------------------------------*
+ * Determine whether the given UTC struct tm* is within the DST         *
+ * interval or the Standard time interval.                              *
+ *----------------------------------------------------------------------*/
+bool Timezone::utcIsDST(struct tm* tm_utc)
+{
+    time_t utc;
+
+    // Conversion from struct tm to time_t to compare times
+    utc = mk_gmtime(tm_utc);
+
+    // Recalculate the time change points if needed
+    if (tm_utc->tm_year != m_tm_dstUTC.tm_year) calcTimeChanges(tm_utc->tm_year);
+
+    if (m_stdUTC == m_dstUTC)       // daylight time not observed in this tz
+        return false;
+    else if (m_stdUTC > m_dstUTC)   // northern hemisphere
+        return (utc >= m_dstUTC && utc < m_stdUTC);
+    else                            // southern hemisphere
+        return !(utc >= m_stdUTC && utc < m_dstUTC);
+}
+
+/*----------------------------------------------------------------------*
+ * Returns the UTC DST offset in minutes, retrieved from                *
+ * DST TimeChangeRule, if UTC is DST, or Standard TimeChangeRule.       *
+ *----------------------------------------------------------------------*/
+int Timezone::getUTCDSTOffset(struct tm* tm_utc)
+{
+  if (utcIsDST(tm_utc))
+      return m_dst.offset;
+  else
+      return m_std.offset;
+}
+
+/*----------------------------------------------------------------------*
  * Determine whether the given Local time_t is within the DST interval  *
  * or the Standard time interval.                                       *
  *----------------------------------------------------------------------*/
 bool Timezone::locIsDST(time_t local)
 {
-    struct tm local_tm;
+    struct tm tm_local;
 
     // Conversion from time_t to struct tm to compare years
-    gmtime_r(&local, &local_tm);
+    gmtime_r(&local, &tm_local);
 
     // Recalculate the time change points if needed
-    if (local_tm.tm_year != m_tm_dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
+    if (tm_local.tm_year != m_tm_dstLoc.tm_year) calcTimeChanges(tm_local.tm_year);
 
     if (m_stdUTC == m_dstUTC)       // daylight time not observed in this tz
         return false;
@@ -206,6 +240,40 @@ bool Timezone::locIsDST(time_t local)
         return (local >= m_dstLoc && local < m_stdLoc);
     else                            // southern hemisphere
         return !(local >= m_stdLoc && local < m_dstLoc);
+}
+
+/*----------------------------------------------------------------------*
+ * Determine whether the given Local struct tm* is within the DST       *
+ * interval or the Standard time interval.                              *
+ *----------------------------------------------------------------------*/
+bool Timezone::locIsDST(struct tm* tm_local)
+{
+    time_t local;
+
+    // Conversion from struct tm to time_t to compare times
+    local = mk_gmtime(tm_local);
+
+    // Recalculate the time change points if needed
+    if (tm_local->tm_year != m_tm_dstLoc.tm_year) calcTimeChanges(tm_local->tm_year);
+
+    if (m_stdUTC == m_dstUTC)       // daylight time not observed in this tz
+        return false;
+    else if (m_stdLoc > m_dstLoc)   // northern hemisphere
+        return (local >= m_dstLoc && local < m_stdLoc);
+    else                            // southern hemisphere
+        return !(local >= m_stdLoc && local < m_dstLoc);
+}
+
+/*----------------------------------------------------------------------*
+ * Returns the local DST offset in minutes, retrieved from              *
+ * DST TimeChangeRule, if local is DST, or Standard TimeChangeRule.     *
+ *----------------------------------------------------------------------*/
+int Timezone::getLocalDSTOffset(struct tm* tm_local) {
+
+    if (locIsDST(tm_local))
+        return m_dst.offset;
+    else
+        return m_std.offset;
 }
 
 /*----------------------------------------------------------------------*

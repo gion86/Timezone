@@ -63,7 +63,11 @@ class Timezone
         time_t toLocal(struct tm *tm_utc, struct tm *tm_local, TimeChangeRule **tcr);
         time_t toUTC(time_t local);
         bool utcIsDST(time_t utc);
+        bool utcIsDST(struct tm *tm_utc);
         bool locIsDST(time_t local);
+        bool locIsDST(struct tm *tm_local);
+        int  getLocalDSTOffset(struct tm* tm_local);
+        int  getUTCDSTOffset(struct tm* tm_utc);
         void setRules(TimeChangeRule dstStart, TimeChangeRule stdStart);
         void readRules(int address);
         void writeRules(int address);
