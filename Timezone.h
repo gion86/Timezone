@@ -1,12 +1,9 @@
 /*----------------------------------------------------------------------*
- * Arduino Timezone Library v1.0                                        *
+ * Arduino Timezone Library v1.2.2                                      *
  * Jack Christensen Mar 2012                                            *
  *                                                                      *
- * This work is licensed under the Creative Commons Attribution-        *
- * ShareAlike 3.0 Unported License. To view a copy of this license,     *
- * visit http://creativecommons.org/licenses/by-sa/3.0/ or send a       *
- * letter to Creative Commons, 171 Second Street, Suite 300,            *
- * San Francisco, California, 94105, USA.                               *
+ * Arduino Timezone Library Copyright (C) 2018 by Jack Christensen and  *
+ * licensed under GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html   *
  *----------------------------------------------------------------------*/ 
 
 /*----------------------------------------------------------------------*
@@ -21,37 +18,44 @@
  *  - 24/11/2018: Added toLocal function with struct tm input/output    *
  *----------------------------------------------------------------------*/
 
+/*----------------------------------------------------------------------*
+ * Arduino Timezone Library v1.3                                        *
+ * Gionata Boccalini                                                    *
+ *  - 16/12/2018: merged from upstream v1.2.2                           *
+ *----------------------------------------------------------------------*/
+
 #ifndef Timezone_h
 #define Timezone_h
 #include <Arduino.h> 
-#include <time.h>              //avr-libc built in time library.
+#include <time.h>              							                    // avr-libc built in time library.
 
-//constants for time_t conversions
+// constants for time_t conversions
 #define SECS_PER_MIN    60
 #define SECS_PER_HOUR   3600
 #define SECS_PER_DAY    86400
 
-//convenient constants for dstRules
+// convenient constants for TimeChangeRules
 enum week_t {Last, First, Second, Third, Fourth}; 
-enum dow_t {Sun, Mon, Tue, Wed, Thu, Fri, Sat};								//avr-libc time.h: months in [0, 11]
-enum month_t {Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};	//avr-libc time.h: months in [0, 11]
+enum dow_t {Sun, Mon, Tue, Wed, Thu, Fri, Sat};					            // avr-libc time.h: sunday is 0
+enum month_t {Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};	// avr-libc time.h: months in [0, 11]
 
-//structure to describe rules for when daylight/summer time begins,
-//or when standard time begins.
+// structure to describe rules for when daylight/summer time begins,
+// or when standard time begins.
 struct TimeChangeRule
 {
-    char abbrev[6];    //five chars max
-    uint8_t week;      //First, Second, Third, Fourth, or Last week of the month
-    uint8_t dow;       //day of week, 1=Sun, 2=Mon, ... 7=Sat
-    uint8_t month;     //1=Jan, 2=Feb, ... 12=Dec
-    uint8_t hour;      //0-23
-    int offset;        //offset from UTC in minutes
+    char abbrev[6];    // five chars max
+    uint8_t week;      // First, Second, Third, Fourth, or Last week of the month
+    uint8_t dow;       // day of week, 0=Sun, 2=Mon, ... 6=Sat
+    uint8_t month;     // 0=Jan, 1=Feb, ... 11=Dec
+    uint8_t hour;      // 0-23
+    int offset;        // offset from UTC in minutes
 };
         
 class Timezone
 {
     public:
         Timezone(TimeChangeRule dstStart, TimeChangeRule stdStart);
+        Timezone(TimeChangeRule stdTime);
         Timezone(int address);
         time_t toLocal(time_t utc);
         time_t toLocal(time_t utc, TimeChangeRule **tcr);
@@ -60,17 +64,19 @@ class Timezone
         time_t toUTC(time_t local);
         bool utcIsDST(time_t utc);
         bool locIsDST(time_t local);
+        void setRules(TimeChangeRule dstStart, TimeChangeRule stdStart);
         void readRules(int address);
         void writeRules(int address);
 
     private:
         void calcTimeChanges(int yr);
+        void initTimeChanges();
         time_t toTime_t(TimeChangeRule r, int yr);
-        TimeChangeRule _dst;    //rule for start of dst or summer time for any year
-        TimeChangeRule _std;    //rule for start of standard time for any year
-        time_t _dstUTC;         //dst start for given/current year, given in UTC
-        time_t _stdUTC;         //std time start for given/current year, given in UTC
-        time_t _dstLoc;         //dst start for given/current year, given in local time
-        time_t _stdLoc;         //std time start for given/current year, given in local time
+        TimeChangeRule m_dst;   // rule for start of dst or summer time for any year
+        TimeChangeRule m_std;   // rule for start of standard time for any year
+        time_t m_dstUTC;        // dst start for given/current year, given in UTC
+        time_t m_stdUTC;        // std time start for given/current year, given in UTC
+        time_t m_dstLoc;        // dst start for given/current year, given in local time
+        time_t m_stdLoc;        // std time start for given/current year, given in local time
 };
 #endif

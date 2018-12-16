@@ -1,12 +1,9 @@
 /*----------------------------------------------------------------------*
- * Arduino Timezone Library v1.0                                        *
+ * Arduino Timezone Library v1.2.2                                      *
  * Jack Christensen Mar 2012                                            *
  *                                                                      *
- * This work is licensed under the Creative Commons Attribution-        *
- * ShareAlike 3.0 Unported License. To view a copy of this license,     *
- * visit http://creativecommons.org/licenses/by-sa/3.0/ or send a       *
- * letter to Creative Commons, 171 Second Street, Suite 300,            *
- * San Francisco, California, 94105, USA.                               *
+ * Arduino Timezone Library Copyright (C) 2018 by Jack Christensen and  *
+ * licensed under GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html   *
  *----------------------------------------------------------------------*/
 
 /*----------------------------------------------------------------------*
@@ -16,25 +13,38 @@
  *                development environment (ATTiny)                      *
  *  - 21/10/2017: Replaced Time.h Arduino library with time.h from      *
  *                avr-libc (to save space on the Tiny)                  *
+ *  - 24/11/2018: Added toLocal function with struct tm input/output    *
+ *----------------------------------------------------------------------*/
+
+/*----------------------------------------------------------------------*
+ * Arduino Timezone Library v1.3                                        *
+ * Gionata Boccalini                                                    *
+ *  - 16/12/2018: merged from upstream v1.2.2                           *
  *----------------------------------------------------------------------*/
 
 #include "Timezone.h"
 
 #ifdef __AVR__
-	#include <avr/eeprom.h>
+    #include <avr/eeprom.h>
 #endif
 
 /*----------------------------------------------------------------------*
  * Create a Timezone object from the given time change rules.           *
  *----------------------------------------------------------------------*/
 Timezone::Timezone(TimeChangeRule dstStart, TimeChangeRule stdStart)
+    : m_dst(dstStart), m_std(stdStart)
 {
-    _dst    = dstStart;
-    _std    = stdStart;
-    _dstUTC = 0;
-    _stdUTC = 0;
-    _dstLoc = 0;
-    _stdLoc = 0;
+    initTimeChanges();
+}
+
+/*----------------------------------------------------------------------*
+ * Create a Timezone object for a zone that does not observe            *
+ * daylight time.                                                       *
+ *----------------------------------------------------------------------*/
+Timezone::Timezone(TimeChangeRule stdTime)
+    : m_dst(stdTime), m_std(stdTime)
+{
+    initTimeChanges();
 }
 
 #ifdef __AVR__
@@ -58,15 +68,15 @@ time_t Timezone::toLocal(time_t utc)
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&utc, &utc_tm);
-    gmtime_r(&_dstUTC, &dstUTC);
+    gmtime_r(&m_dstUTC, &dstUTC);
 
-    //recalculate the time change points if needed
+    // Recalculate the time change points if needed
     if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
 
     if (utcIsDST(utc))
-        return utc + _dst.offset * SECS_PER_MIN;
+        return utc + m_dst.offset * SECS_PER_MIN;
     else
-        return utc + _std.offset * SECS_PER_MIN;
+        return utc + m_std.offset * SECS_PER_MIN;
 }
 
 /*----------------------------------------------------------------------*
@@ -81,18 +91,18 @@ time_t Timezone::toLocal(time_t utc, TimeChangeRule **tcr)
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&utc, &utc_tm);
-    gmtime_r(&_dstUTC, &dstUTC);
+    gmtime_r(&m_dstUTC, &dstUTC);
 
-    //recalculate the time change points if needed
+    // Recalculate the time change points if needed
     if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
 
     if (utcIsDST(utc)) {
-        *tcr = &_dst;
-        return utc + _dst.offset * SECS_PER_MIN;
+        *tcr = &m_dst;
+        return utc + m_dst.offset * SECS_PER_MIN;
     }
     else {
-        *tcr = &_std;
-        return utc + _std.offset * SECS_PER_MIN;
+        *tcr = &m_std;
+        return utc + m_std.offset * SECS_PER_MIN;
     }
 }
 
@@ -146,15 +156,15 @@ time_t Timezone::toUTC(time_t local)
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&local, &local_tm);
-    gmtime_r(&_dstLoc, &dstLoc);
+    gmtime_r(&m_dstLoc, &dstLoc); // TODO
 
-    //recalculate the time change points if needed
+    // Recalculate the time change points if needed
     if (local_tm.tm_year != dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
 
     if (locIsDST(local))
-        return local - _dst.offset * SECS_PER_MIN;
+        return local - m_dst.offset * SECS_PER_MIN;
     else
-        return local - _std.offset * SECS_PER_MIN;
+        return local - m_std.offset * SECS_PER_MIN;
 }
 
 /*----------------------------------------------------------------------*
@@ -167,15 +177,17 @@ bool Timezone::utcIsDST(time_t utc)
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&utc, &utc_tm);
-    gmtime_r(&_dstUTC, &dstUTC);
+    gmtime_r(&m_dstUTC, &dstUTC);
 
-    //recalculate the time change points if needed
+    // Recalculate the time change points if needed
     if (utc_tm.tm_year != dstUTC.tm_year) calcTimeChanges(utc_tm.tm_year);
 
-    if (_stdUTC > _dstUTC)    //northern hemisphere
-        return (utc >= _dstUTC && utc < _stdUTC);
-    else                      //southern hemisphere
-        return !(utc >= _stdUTC && utc < _dstUTC);
+    if (m_stdUTC == m_dstUTC)       // daylight time not observed in this tz
+        return false;
+    else if (m_stdUTC > m_dstUTC)   // northern hemisphere
+        return (utc >= m_dstUTC && utc < m_stdUTC);
+    else                            // southern hemisphere
+        return !(utc >= m_stdUTC && utc < m_dstUTC);
 }
 
 /*----------------------------------------------------------------------*
@@ -188,15 +200,17 @@ bool Timezone::locIsDST(time_t local)
 
     // Conversion from time_t to struct tm to compare years
     gmtime_r(&local, &local_tm);
-    gmtime_r(&_dstLoc, &dstLoc);
+    gmtime_r(&m_dstLoc, &dstLoc);
 
-    //recalculate the time change points if needed
+    // Recalculate the time change points if needed
     if (local_tm.tm_year != dstLoc.tm_year) calcTimeChanges(local_tm.tm_year);
 
-    if (_stdLoc > _dstLoc)    //northern hemisphere
-        return (local >= _dstLoc && local < _stdLoc);
-    else                      //southern hemisphere
-        return !(local >= _stdLoc && local < _dstLoc);
+    if (m_stdUTC == m_dstUTC)       // daylight time not observed in this tz
+        return false;
+    else if (m_stdLoc > m_dstLoc)   // northern hemisphere
+        return (local >= m_dstLoc && local < m_stdLoc);
+    else                            // southern hemisphere
+        return !(local >= m_stdLoc && local < m_dstLoc);
 }
 
 /*----------------------------------------------------------------------*
@@ -205,30 +219,41 @@ bool Timezone::locIsDST(time_t local)
  *----------------------------------------------------------------------*/
 void Timezone::calcTimeChanges(int yr)
 {
-    _dstLoc = toTime_t(_dst, yr);
-    _stdLoc = toTime_t(_std, yr);
-    _dstUTC = _dstLoc - _std.offset * SECS_PER_MIN;
-    _stdUTC = _stdLoc - _dst.offset * SECS_PER_MIN;
+    m_dstLoc = toTime_t(m_dst, yr);
+    m_stdLoc = toTime_t(m_std, yr);
+    m_dstUTC = m_dstLoc - m_std.offset * SECS_PER_MIN;
+    m_stdUTC = m_stdLoc - m_dst.offset * SECS_PER_MIN;
 }
 
 /*----------------------------------------------------------------------*
- * Convert the given DST change rule to a time_t value                  *
+ * Initialize the DST and standard time change points.                  *
+ *----------------------------------------------------------------------*/
+void Timezone::initTimeChanges()
+{
+    m_dstLoc = 0;
+    m_stdLoc = 0;
+    m_dstUTC = 0;
+    m_stdUTC = 0;
+}
+
+/*----------------------------------------------------------------------*
+ * Convert the given time change rule to a time_t value                 *
  * for the given year.                                                  *
  *----------------------------------------------------------------------*/
 time_t Timezone::toTime_t(TimeChangeRule r, int yr)
 {
     struct tm tm, tm_wday;
     time_t t;
-    uint8_t m, w;            //temp copies of r.month and r.week
-
-    m = r.month;
-    w = r.week;
-    if (w == 0) {            //Last week = 0
-        if (++m > 11) {      //for "Last", go to the next month: avr-libc time.h: months in [0, 11]
-            m = 0;
-            yr++;
+    uint8_t m = r.month;     // temp copies of r.month and r.week
+    uint8_t w = r.week;
+    if (w == 0)              // is this a "Last week" rule?
+    {
+        if (++m > 11)        // yes, for "Last", go to the next month: avr-libc time.h: months in [0, 11]
+        {
+            m = 1;
+            ++yr;
         }
-        w = 1;               //and treat as first week of next month, subtract 7 days later
+        w = 1;               // and treat as first week of next month, subtract 7 days later
     }
 
     tm.tm_hour = r.hour;
@@ -236,37 +261,50 @@ time_t Timezone::toTime_t(TimeChangeRule r, int yr)
     tm.tm_sec = 0;
     tm.tm_mday = 1;
     tm.tm_mon = m;
-    tm.tm_year = yr;         //avr-libc time.h: years since 1900 + y2k epoch difference (2000 - 1970)
+    tm.tm_year = yr;         // avr-libc time.h: years since 1900 + y2k epoch difference (2000 - 1970)
 
-    t = mk_gmtime(&tm);      //first day of the month, or first day of next month for "Last" rules
+    t = mk_gmtime(&tm);      // calculate first day of the month, or for "Last" rules, first day of the next month
 
-    gmtime_r(&t, &tm_wday);  //conversion from time_t to struct tm to have week day
+    gmtime_r(&t, &tm_wday);  // conversion from time_t to struct tm to have week day
 
-    t += (7 * (w - 1) + (r.dow - tm_wday.tm_wday + 7) % 7) * SECS_PER_DAY;  //weekday in [0, 6]
-    if (r.week == Last) t -= 7 * SECS_PER_DAY;    //back up a week if this is a "Last" rule
+    // add offset from the first of the month to r.dow, and offset for the given week: weekday in [0, 6]
+    t += ((r.dow - tm_wday.tm_wday + 7) % 7 + (w - 1) * 7) * SECS_PER_DAY;
+    // back up a week if this is a "Last" rule
+    if (r.week == 0) t -= 7 * SECS_PER_DAY;
     return t;
+}
+
+/*----------------------------------------------------------------------*
+ * Read or update the daylight and standard time rules from RAM.        *
+ *----------------------------------------------------------------------*/
+void Timezone::setRules(TimeChangeRule dstStart, TimeChangeRule stdStart)
+{
+    m_dst = dstStart;
+    m_std = stdStart;
+    initTimeChanges();  // force calcTimeChanges() at next conversion call
 }
 
 #ifdef __AVR__
 /*----------------------------------------------------------------------*
- * Read the daylight and standard time rules from EEPROM at				*
+ * Read the daylight and standard time rules from EEPROM at             *
  * the given address.                                                   *
  *----------------------------------------------------------------------*/
 void Timezone::readRules(int address)
 {
-    eeprom_read_block((void *) &_dst, (void *) address, sizeof(_dst));
-    address += sizeof(_dst);
-    eeprom_read_block((void *) &_std, (void *) address, sizeof(_std));
+    eeprom_read_block((void *) &m_dst, (void *) address, sizeof(m_dst));
+    address += sizeof(m_dst);
+    eeprom_read_block((void *) &m_std, (void *) address, sizeof(m_std));
+    initTimeChanges();  // force calcTimeChanges() at next conversion call
 }
 
 /*----------------------------------------------------------------------*
- * Write the daylight and standard time rules to EEPROM at				*
+ * Write the daylight and standard time rules to EEPROM at              *
  * the given address.                                                   *
  *----------------------------------------------------------------------*/
 void Timezone::writeRules(int address)
 {
-    eeprom_write_block((void *) &_dst, (void *) address, sizeof(_dst));
-    address += sizeof(_dst);
-    eeprom_write_block((void *) &_std, (void *) address, sizeof(_std));
+    eeprom_write_block((void *) &m_dst, (void *) address, sizeof(m_dst));
+    address += sizeof(m_dst);
+    eeprom_write_block((void *) &m_std, (void *) address, sizeof(m_std));
 }
 #endif
